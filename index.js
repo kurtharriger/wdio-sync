@@ -473,9 +473,22 @@ let runSpec = function (specTitle, specFn, origFn, repeatTest = 0) {
      * user wants handle async command using promises, no need to wrap in fiber context
      */
     if (isAsync() || specFn.name === 'async') {
-        return origFn(specTitle, function () {
-            return executeAsync.call(this, specFn, repeatTest)
-        })
+        let result
+        // jasmine determines if spec wants to be async or sync based on
+        // the number of explicit arguments.  If the spec requests a done
+        // argument it is run async, if not it is run sync and therefore
+        // the replacement function also needs to preserve the argument
+        // length
+        if (specFn.length === 1) {
+            result = origFn(specTitle, function (done) {
+                return executeAsync.call(this, specFn, repeatTest, [done])
+            })
+        } else {
+            result = origFn(specTitle, function () {
+                return executeAsync.call(this, specFn, repeatTest)
+            })
+        }
+        return result
     }
 
     return origFn(specTitle, function (resolve) {
